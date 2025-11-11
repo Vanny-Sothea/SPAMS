@@ -1,5 +1,6 @@
 import logger from "../utils/logger"
-import prisma from "../prismaClient"
+import { User } from "../models/User"
+import { RefreshToken } from "../models/RefreshToken"
 import {
 	validateRefreshToken,
 } from "../utils/validation"
@@ -7,7 +8,7 @@ import { Request, Response } from "express"
 import {
 	generateTokens,
 } from "../utils/generateToken"
-import { User } from "../types/types"
+import { UserType } from "../types/types"
 
 export const refreshTokenUser = async (req: Request, res: Response) => {
 	logger.info("Refresh token endpoint hit")
@@ -31,9 +32,7 @@ export const refreshTokenUser = async (req: Request, res: Response) => {
 				.json({ success: false, message: "No refresh token found" })
 		}
 
-		const storedToken = await prisma.refreshToken.findUnique({
-			where: { token: refreshToken },
-		})
+		const storedToken = await RefreshToken.findOne({ token: refreshToken })
 
 		if (!storedToken || storedToken.expiresAt < new Date()) {
 			logger.error("Invalid or expired token")
@@ -42,22 +41,20 @@ export const refreshTokenUser = async (req: Request, res: Response) => {
 				.json({ success: false, message: "Invalid or expired token" })
 		}
 
-		const user = await prisma.user.findUnique({
-			where: { id: storedToken.userId, isVerified: true },
-		})
+		const user = await User.findOne({ _id: storedToken.user, isVerified: true })
 
 		if (!user) {
 			logger.error("User not found")
 			return res.status(404).json({ success: false, message: "User not found" })
 		}
 
-		const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-			await generateTokens(res, user as User)
-
 		// Delete the old refresh token
-		await prisma.refreshToken.delete({ where: { token: refreshToken } })
+		await RefreshToken.deleteMany({ user: user._id })
 
-		logger.info("User refresh token successfully", { userId: user.id })
+		const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+			await generateTokens(res, user as UserType)
+
+		logger.info("User refresh token successfully", { userId: user._id })
 
 		return res.status(200).json({
 			success: true,

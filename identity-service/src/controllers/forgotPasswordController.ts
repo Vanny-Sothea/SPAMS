@@ -1,5 +1,5 @@
 import logger from "../utils/logger"
-import prisma from "../prismaClient"
+import { User } from "../models/User"
 import { validateForgotPasswordRequest } from "../utils/validation"
 import { Request, Response } from "express"
 import { generateVerificationToken } from "../utils/generateToken"
@@ -17,9 +17,7 @@ export const forgotPasswordUser = async (req: Request, res: Response) => {
 				.json({ success: false, message: error.details[0].message })
 		}
 
-		const user = await prisma.user.findUnique({
-			where: { email },
-		})
+		const user = await User.findOne({ email })
 
 		if (!user) {
 			logger.error("User not found")
@@ -32,15 +30,15 @@ export const forgotPasswordUser = async (req: Request, res: Response) => {
 
 		const twoFactorCode = Math.floor(100000 + Math.random() * 900000).toString()
 
-		await prisma.user.update({
-			where: { id: user.id },
-			data: {
+		await User.updateOne(
+			{ _id: user._id },
+			{
 				twoFactorCode,
-				twoFactorExp: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from current
-			},
-		})
+				twoFactorCodeExpiry: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from current
+			}
+		)
 
-		await generateVerificationToken(res, user.id, user.email)
+		await generateVerificationToken(res, user._id, user.email)
 		await publishEvent("identity.service", "user.forgot_password", {
 			email: user.email,
 			code: twoFactorCode,

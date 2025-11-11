@@ -3,6 +3,7 @@ dotenv.config()
 
 import express from "express"
 import helmet from "helmet"
+import mongoose from "mongoose"
 import { RateLimiterRedis } from "rate-limiter-flexible"
 import { Redis } from "ioredis"
 import { rateLimit } from "express-rate-limit"
@@ -11,11 +12,19 @@ import cookieParser from "cookie-parser"
 import logger from "./utils/logger"
 import errorHandler from "./middleware/errorHandler"
 import router from "./routes/auth-service"
-import { connectDB } from "./prismaClient"
 import { connectToRabbitMQ } from "./utils/rabbitmq"
 
 const app = express()
 const PORT = process.env.PORT || 3001
+
+if (!process.env.MONGODB_URI) {
+	logger.error("MONGODB_URI is not defined")
+	process.exit(1)
+}
+
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => logger.info('MongoDB Connected Successfully'))
+    .catch(e => logger.error('MongoDB Connection Error', e));
 
 if (!process.env.REDIS_URL) {
 	logger.error("REDIS_URL is not defined")
@@ -106,7 +115,6 @@ app.use(errorHandler)
 
 async function startServer() {
 	try {
-		await connectDB()
 		await connectToRabbitMQ()
 		app.listen(PORT, () => {
 			logger.info(`Identity service running on port ${PORT}`)

@@ -1,16 +1,18 @@
+import { Types } from "mongoose"
 import jwt from "jsonwebtoken"
 import crypto from "crypto"
 import { Response } from "express"
-import prisma from "../prismaClient"
-import { User } from "../types/types"
+import { UserType } from "../types/types"
+import { RefreshToken } from "../models/RefreshToken"
 
-export const generateTokens = async (res: Response, user: User) => {
+export const generateTokens = async (res: Response, user: UserType) => {
 	const userName = user.lastName
 		? user.firstName + user.lastName
 		: user.firstName
+
 	const accessToken = jwt.sign(
 		{
-			userId: user.id,
+			userId: user._id.toString(), // Convert ObjectId to string
 			username: userName,
 			email: user.email,
 			role: user.role,
@@ -21,20 +23,18 @@ export const generateTokens = async (res: Response, user: User) => {
 
 	const refreshToken = crypto.randomBytes(40).toString("hex")
 	const expiresAt = new Date()
-	expiresAt.setDate(expiresAt.getDate() + 18) // 18 days from now
+	expiresAt.setDate(expiresAt.getDate() + 18) // 18 days
 
-	await prisma.refreshToken.create({
-		data: {
-			token: refreshToken,
-			userId: user.id,
-			expiresAt,
-		},
+	await RefreshToken.create({
+		token: refreshToken,
+		user: user._id, // keep ObjectId for DB
+		expiresAt,
 	})
 
 	res.cookie("refreshToken", refreshToken, {
-		httpOnly: true, // Prevent JavaScript access
-		secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-		sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // Prevent CSRF attacks
+		httpOnly: true,
+		secure: process.env.NODE_ENV === "production",
+		sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
 		expires: expiresAt,
 	})
 
@@ -42,7 +42,7 @@ export const generateTokens = async (res: Response, user: User) => {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
 		sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-		expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
+		expires: new Date(Date.now() + 15 * 60 * 1000),
 	})
 
 	return { accessToken, refreshToken }
@@ -50,11 +50,11 @@ export const generateTokens = async (res: Response, user: User) => {
 
 export const generateVerificationToken = async (
 	res: Response,
-	userId: number,
+	userId: Types.ObjectId,
 	email: string
 ) => {
 	const verificationToken = jwt.sign(
-		{ userId, email },
+		{ userId: userId.toString(), email }, // <-- convert to string
 		process.env.JWT_SECRET as string,
 		{ expiresIn: "3m" }
 	)
@@ -63,19 +63,22 @@ export const generateVerificationToken = async (
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
 		sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-		expires: new Date(Date.now() + 180000), // 3 minutes from now
+		expires: new Date(Date.now() + 180000), // 3 minutes
 	})
 
 	return verificationToken
 }
 
-export const generateResetPasswordToken = async (res: Response, user: User) => {
+export const generateResetPasswordToken = async (
+	res: Response,
+	user: UserType
+) => {
 	const userName = user.lastName
 		? user.firstName + user.lastName
 		: user.firstName
 	const resetPasswordToken = jwt.sign(
 		{
-			userId: user.id,
+			userId: user._id.toString(), // <-- convert ObjectId to string
 			username: userName,
 			email: user.email,
 		},

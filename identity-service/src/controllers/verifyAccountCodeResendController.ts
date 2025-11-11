@@ -1,5 +1,5 @@
 import logger from "../utils/logger"
-import prisma from "../prismaClient"
+import { User } from "../models/User"
 import { Request, Response } from "express"
 import { generateVerificationToken } from "../utils/generateToken"
 import { publishEvent } from "../utils/rabbitmq"
@@ -7,17 +7,15 @@ import { publishEvent } from "../utils/rabbitmq"
 export const verifyAccountCodeResend = async (req: Request, res: Response) => {
 	logger.info("Resend verification code request endpoint hit")
 	try {
-		const { userId } = req.user as { userId: number }
-		const user = await prisma.user.findUnique({
-			where: { id: userId },
-		})
+		const { userId } = req.user as { userId: string };
+		const user = await User.findById(userId)
 
 		if (!user) {
 			logger.error("User not found")
 			return res.status(404).json({ success: false, message: "User not found" })
 		}
 		if (user.isVerified) {
-			logger.warn("User already verified", { userId: user.id })
+			logger.warn("User already verified", { userId: user._id })
 			return res
 				.status(400)
 				.json({ success: false, message: "User already verified" })
@@ -27,22 +25,21 @@ export const verifyAccountCodeResend = async (req: Request, res: Response) => {
 
 		const twoFactorCode = Math.floor(100000 + Math.random() * 900000).toString()
 
-		await prisma.user.update({
-			where: { id: user.id },
-			data: {
-				twoFactorCode,
-				twoFactorExp: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from current
-			},
+		await User.updateOne({
+			_id: user._id
+		}, {
+			twoFactorCode,
+			twoFactorCodeExpiry: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from current
 		})
 
-		await generateVerificationToken(res, user.id, user.email)
+		await generateVerificationToken(res, user._id, user.email)
 		await publishEvent("identity.service", "user.registered", {
 			email: user.email,
 			code: twoFactorCode,
 		})
 
 		logger.info("Resend verification code request successful", {
-			userId: user.id,
+			userId: user._id,
 		})
 
 		return res.status(200).json({

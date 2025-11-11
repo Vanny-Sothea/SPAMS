@@ -1,5 +1,5 @@
 import logger from "../utils/logger"
-import prisma from "../prismaClient"
+import { Role, User } from "../models/User"
 import argon2 from "argon2"
 import { validateRegistration } from "../utils/validation"
 import { RegistrationData } from "../types/types"
@@ -23,8 +23,7 @@ export const registerUser = async (
 				.json({ success: false, message: error.details[0].message })
 		}
 
-		const existingUser = await prisma.user.findUnique({ where: { email } })
-
+		const existingUser = await User.findOne({ email })
 		if (existingUser) {
 			if (existingUser.isVerified) {
 				logger.warn("Email already in use by a verified user")
@@ -35,32 +34,30 @@ export const registerUser = async (
 				logger.warn(
 					"User already signup but not yet verified. Delete the existing user"
 				)
-				await prisma.user.delete({ where: { email } })
+				await User.deleteOne({ email })
 			}
 		}
 
 		const twoFactorCode = Math.floor(100000 + Math.random() * 900000).toString()
 		const hashedPassword = await argon2.hash(password)
 
-		const user = await prisma.user.create({
-			data: {
-				firstName: firstName,
-				lastName: lastName,
-				email: email,
-				password: hashedPassword,
-				role: email === process.env.ADMIN_ACCOUNT ? "ADMIN" : "USER",
-				twoFactorCode,
-				twoFactorExp: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from current
-			},
+		const user = await User.create({
+			firstName: firstName,
+			lastName: lastName,
+			email: email,
+			password: hashedPassword,
+			role: email === process.env.ADMIN_ACCOUNT ? Role.ADMIN : Role.USER,
+			twoFactorCode,
+			twoFactorCodeExpiry: new Date(Date.now() + 3 * 60 * 1000), // 3 minutes from current
 		})
 
-		await generateVerificationToken(res, user.id, user.email)
+		await generateVerificationToken(res, user._id, user.email)
 		await publishEvent("identity.service", "user.registered", {
 			email: user.email,
 			code: twoFactorCode,
 		})
 
-		logger.info("User registered successfully", { userId: user.id })
+		logger.info("User registered successfully", { userId: user._id })
 
 		return res
 			.status(201)

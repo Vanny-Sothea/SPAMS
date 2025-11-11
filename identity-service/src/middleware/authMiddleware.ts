@@ -21,11 +21,8 @@ export const authenticateRequest = (
 			.json({ message: "Authentication required! Please login to continue." })
 	}
 
-	const userId = parseInt(userIdHeader, 10)
-	const role = roleHeader
-	if (isNaN(userId)) {
-		return res.status(400).json({ message: "Access attempted without user ID" })
-	}
+	const userId = userIdHeader.toString() // Keep as string for MongoDB ObjectId
+	const role = roleHeader.toString()
 
 	req.user = { userId, role } as UserPayload
 	next()
@@ -39,7 +36,7 @@ export const authorizeRoles = (...allowedRoles: string[]) => {
 			})
 		}
 
-		const user = req.user as { userId: number; role: string }
+		const user = req.user as UserPayload
 
 		if (!allowedRoles.includes(user.role)) {
 			return res.status(403).json({
@@ -55,15 +52,14 @@ export const verifyVerificationToken =
 	(req: Request, res: Response, next: NextFunction) => {
 		const token = req.cookies?.[tokenField]
 		if (!token) {
-			logger.warn("No verification token provided")
-			return res.status(401).json({
-				message: "Session expired or not verified.",
-			})
+			return res
+				.status(401)
+				.json({ message: "Session expired or not verified." })
 		}
 
 		try {
 			const decoded = jwt.verify(token, process.env.JWT_SECRET as string)
-			req.user = decoded as UserPayload
+			req.user = decoded as UserPayload // decoded.userId is string
 			next()
 		} catch (err) {
 			return res

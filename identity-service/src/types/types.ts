@@ -1,10 +1,12 @@
+import { Types } from "mongoose";
+
 export interface UserPayload {
-	userId: number
-	role: string
+  userId: string; // Use string for JWT / req.user
+  role: "USER" | "ADMIN";
 }
 
-export interface User {
-  id: number;
+export interface UserType {
+  _id: Types.ObjectId;
   firstName: string;
   lastName?: string;
   role: "USER" | "ADMIN";

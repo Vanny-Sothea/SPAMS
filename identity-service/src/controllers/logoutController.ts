@@ -1,5 +1,6 @@
 import logger from "../utils/logger"
-import prisma from "../prismaClient"
+import { RefreshToken } from "../models/RefreshToken"
+import { User } from "../models/User"
 import { validateRefreshToken } from "../utils/validation"
 import { Request, Response } from "express"
 
@@ -33,9 +34,7 @@ export const logoutUser = async (req: Request, res: Response) => {
 			})
 		}
 
-		const storedToken = await prisma.refreshToken.findUnique({
-			where: { token: refreshToken },
-		})
+		const storedToken = await RefreshToken.findOne({ token: refreshToken })
 
 		if (!storedToken || storedToken.expiresAt < new Date()) {
 			logger.error("Invalid refresh token")
@@ -45,18 +44,14 @@ export const logoutUser = async (req: Request, res: Response) => {
 			})
 		}
 
-		const user = await prisma.user.findUnique({
-			where: { id: storedToken.userId, isVerified: true },
-		})
+		const user = await User.findOne({ _id: storedToken.user, isVerified: true })
 
 		if (!user) {
 			logger.error("User not found")
 			return res.status(404).json({ success: false, message: "User not found" })
 		}
 
-		await prisma.refreshToken.deleteMany({
-			where: { userId: user.id },
-		})
+		await RefreshToken.deleteMany({ user: user._id })
 
 		res.clearCookie("refreshToken")
 		res.clearCookie("accessToken")
