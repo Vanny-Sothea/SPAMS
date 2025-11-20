@@ -49,7 +49,30 @@ redisClient.on("error", (err) => {
 
 app.set("trust proxy", 1)
 app.use(helmet())
-app.use(express.json())
+// Apply JSON body parsing only for non-multipart requests. This prevents
+// the JSON body parser from trying to parse multipart/form-data uploads
+// (which causes the 'Unexpected token' JSON.parse errors). Multer will
+// handle multipart form parsing for upload routes.
+// Log content-type for upload attempts to help debug gateway/header issues
+app.use((req, res, next) => {
+	try {
+		if (req.path && req.path.includes("upload")) {
+			logger.info(`Incoming upload request headers: ${JSON.stringify(req.headers)}`)
+		}
+	} catch (e) {
+		// ignore logging errors
+	}
+	next()
+})
+
+// Apply JSON body parsing only when the request Content-Type is JSON.
+// Some gateways may forward file uploads with non-standard content-types
+// (or missing boundary), so only run express.json() when it's actually JSON.
+app.use((req, res, next) => {
+	const ct = (req.headers["content-type"] || "").toString().toLowerCase()
+	if (!ct || !ct.startsWith("application/json")) return next()
+	return express.json()(req, res, next)
+})
 app.use(cookieParser())
 
 const getClientIp = (req: express.Request): string => {

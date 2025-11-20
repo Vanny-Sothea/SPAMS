@@ -19,24 +19,6 @@ services:
       - /usr/src/app/node_modules
     command: pnpm run dev
 
-  student-service:
-    build:
-      context: ./student-service
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./student-service:/usr/src/app
-      - /usr/src/app/node_modules
-    command: pnpm run dev
-
-  course-service:
-    build:
-      context: ./course-service
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./course-service:/usr/src/app
-      - /usr/src/app/node_modules
-    command: pnpm run dev
-
   grade-service:
     build:
       context: ./grade-service
@@ -45,24 +27,6 @@ services:
       - ./grade-service:/usr/src/app
       - /usr/src/app/node_modules
     command: pnpm run dev
-
-  # media-service:
-  #   build:
-  #     context: ./media-service
-  #     dockerfile: Dockerfile.dev
-  #   volumes:
-  #     - ./media-service:/usr/src/app
-  #     - /usr/src/app/node_modules
-  #   command: pnpm run dev
-
-  # search-service:
-  #   build:
-  #     context: ./search-service
-  #     dockerfile: Dockerfile.dev
-  #   volumes:
-  #     - ./search-service:/usr/src/app
-  #     - /usr/src/app/node_modules
-  #   command: pnpm run dev
 
   notification-service:
     build:

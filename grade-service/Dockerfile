@@ -36,5 +36,5 @@ COPY --from=build /usr/src/app/dist ./dist
 # Copy any other necessary files (config, .env example, etc.)
 COPY package*.json ./
 
-EXPOSE 3004
+EXPOSE 3002
 CMD ["node", "dist/server.js"]

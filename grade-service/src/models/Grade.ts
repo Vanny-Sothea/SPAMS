@@ -1,34 +1,21 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
-const gradeSchema = new mongoose.Schema(
-	{
-		student_id: {
-			type: String,
-			required: true,
-		},
-		course_code: {
-			type: String,
-			required: true,
-		},
-		grade: { 
-			type: String, 
-			enum: ["A", "B", "C", "D", "F"], 
-			required: true 
-		},
-		numeric_grade: { 
-			type: Number, 
-			required: true 
-		},
-		date: { 
-			type: Date, 
-			default: Date.now 
-		},
-	},
-	{
-		timestamps: true,
-	}
-)
+const studentGradesSchema = new mongoose.Schema({
+  studentId: { type: String, required: true },
+  studentName: { type: String, required: true },
+  batch: { type: String, required: true },
+  major: { type: String, required: true },
+  semester: { type: String, required: false },
+  courses: [
+    {
+      courseCode: { type: String, required: true },
+      courseName: { type: String, required: false },
+      score: { type: Number, required: true }
+    }
+  ]
+}, { timestamps: true });
 
-gradeSchema.index({ grade: "text" })
+// Optional index for searching
+studentGradesSchema.index({ studentId: 1, batch: 1 });
 
-export const Grade = mongoose.model("Grade", gradeSchema)
+export const StudentGrades = mongoose.model("StudentGrades", studentGradesSchema);

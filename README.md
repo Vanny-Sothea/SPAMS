@@ -60,6 +60,5 @@ BongPay will start all core microservices, the API Gateway, RabbitMQ, Redis, and
 | -------------------- | ------------------------------- | ------ |
 | API Gateway          | Entry point for all requests    | `3000` |
 | Identity Service     | User registration, login, roles | `3001` |
-<!-- | Media Service        | Product media CRUD              | `3003` | -->
-<!-- | Search Service       | Product search functionality    | `3004` | -->
+| Grade Service        | Grade service CRUD              | `3002` |
 | Notification Service | Email/SMS notifications         | `3008` |

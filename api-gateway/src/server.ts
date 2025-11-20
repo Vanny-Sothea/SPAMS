@@ -119,30 +119,6 @@ app.use(
 	createProxy(process.env.IDENTITY_SERVICE_URL, "identity service")
 )
 
-if (!process.env.STUDENT_SERVICE_URL) {
-	logger.error("STUDENT_SERVICE_URL is not defined")	
-	process.exit(1)
-}
-
-app.use(
-	"/v1/student",
-	captureUrl,
-	validationToken,
-	createProxy(process.env.STUDENT_SERVICE_URL, "student service")
-)
-
-if (!process.env.COURSE_SERVICE_URL) {
-	logger.error("COURSE_SERVICE_URL is not defined")
-	process.exit(1)
-}
-
-app.use(
-	"/v1/course",
-	captureUrl,
-	validationToken,
-	createProxy(process.env.COURSE_SERVICE_URL, "course service")
-)
-
 if (!process.env.GRADE_SERVICE_URL) {
 	logger.error("GRADE_SERVICE_URL is not defined")
 	process.exit(1)
@@ -152,33 +128,11 @@ app.use(
 	"/v1/grade",
 	captureUrl,
 	validationToken,
-	createProxy(process.env.GRADE_SERVICE_URL, "grade service")
+	// Allow multipart/form-data (file uploads) to pass through without
+	// parsing or Content-Type modification. The proxy helper will avoid
+	// setting Content-Type to application/json and will not parse the body.
+	createProxy(process.env.GRADE_SERVICE_URL, "grade service", { type: "multipart" })
 )
-
-// if (!process.env.MEDIA_SERVICE_URL) {
-// 	logger.error("MEDIA_SERVICE_URL is not defined")
-// 	process.exit(1)
-// }
-
-// app.use(
-// 	"/v1/media",
-// 	captureUrl,
-// 	validationToken,
-// 	createProxy(process.env.MEDIA_SERVICE_URL, "media service", {
-// 		type: "multipart",
-// 	})
-// )
-
-// if (!process.env.SEARCH_SERVICE_URL) {
-// 	logger.error("SEARCH_SERVICE_URL is not defined")
-// 	process.exit(1)
-// }
-
-// app.use(
-// 	"/v1/search",
-// 	captureUrl,
-// 	createProxy(process.env.SEARCH_SERVICE_URL, "search service")
-// )
 
 if (!process.env.NOTIFICATION_SERVICE_URL) {
 	logger.error("NOTIFICATION_SERVICE_URL is not defined")
@@ -206,22 +160,9 @@ async function startServer() {
 			)
 
 			logger.info(
-				`Student service proxy target: ${process.env.STUDENT_SERVICE_URL}`
-			)
-
-			logger.info(
-				`Course service proxy target: ${process.env.COURSE_SERVICE_URL}`
-			)
-
-			logger.info(
 				`Grade service proxy target: ${process.env.GRADE_SERVICE_URL}`
 			)
-			// logger.info(
-			// 	`Media service proxy target: ${process.env.MEDIA_SERVICE_URL}`
-			// )
-			// logger.info(
-			// 	`Search service proxy target: ${process.env.SEARCH_SERVICE_URL}`
-			// )
+
 			logger.info(
 				`Notification service proxy target: ${process.env.NOTIFICATION_SERVICE_URL}`
 			)
