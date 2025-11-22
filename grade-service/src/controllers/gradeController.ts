@@ -970,6 +970,91 @@ export const batchSemesterAggregate = async (req: Request, res: Response) => {
   }
 };
 
+// GET /grade/courses/search?query=...&semester=...&major=...
+// Examples:
+// - All courses: http://.../grade/courses/search
+// - Search by name: http://.../grade/courses/search?query=math
+// - Filter by semester: http://.../grade/courses/search?semester=Fall 2023
+// - Filter by major: http://.../grade/courses/search?major=Computer Science
+// - Combined: http://.../grade/courses/search?query=math&semester=Fall 2023&major=Computer Science
+export const courseSearch = async (req: Request, res: Response) => {
+  try {
+    const queryRaw = req.query.query;
+    const semesterRaw = req.query.semester;
+    const majorRaw = req.query.major;
+
+    const query = queryRaw ? String(queryRaw).trim() : "";
+    const semester = semesterRaw ? String(semesterRaw).trim() : "";
+    const major = majorRaw ? String(majorRaw).trim() : "";
+
+    // Build match conditions
+    const matchConditions: any = {};
+
+    // Filter by semester if provided
+    if (semester) {
+      matchConditions.semester = { $regex: `^${semester}$`, $options: "i" };
+    }
+
+    // Filter by major if provided
+    if (major) {
+      matchConditions.major = { $regex: `^${major}$`, $options: "i" };
+    }
+
+    // Build aggregation pipeline
+    const pipeline: any[] = [];
+
+    // First match: filter documents by semester/major if specified
+    if (Object.keys(matchConditions).length > 0) {
+      pipeline.push({ $match: matchConditions });
+    }
+
+    // Unwind courses array
+    pipeline.push({ $unwind: "$courses" });
+
+    // Second match: filter courses by query if specified
+    if (query) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { "courses.courseCode": { $regex: query, $options: "i" } },
+            { "courses.courseName": { $regex: query, $options: "i" } },
+          ],
+        },
+      });
+    }
+
+    // Group by course code to get distinct courses
+    pipeline.push({
+      $group: {
+        _id: "$courses.courseCode",
+        courseName: { $first: "$courses.courseName" },
+        semesters: { $addToSet: "$semester" },
+        majors: { $addToSet: "$major" },
+      },
+    });
+
+    // Project final shape
+    pipeline.push({
+      $project: {
+        courseCode: "$_id",
+        courseName: 1,
+        semesters: 1,
+        majors: 1,
+        _id: 0,
+      },
+    });
+
+    // Sort by course code
+    pipeline.push({ $sort: { courseCode: 1 } });
+
+    const courses = await StudentGrades.aggregate(pipeline);
+    return res.json({ success: true, data: courses });
+  } catch (err) {
+    logger.error("courseSearch error", err);
+    return res.status(500).json({ success: false, message: "Internal error" });
+  }
+};
+
 export default {
   uploadGrades,
   getCsvHistory,

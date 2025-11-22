@@ -18,6 +18,7 @@ import {
   getCsvById,
   updateCsv,
   deleteCsv,
+  courseSearch,
 } from "../controllers/gradeController";
 
 // If you have auth middleware, you can uncomment and use it
@@ -44,6 +45,8 @@ router.get("/all", getAllGrades);
 router.get("/performance-over-time/:studentId", performanceOverTime);
 router.get("/grade-distribution/:courseCode", gradeDistribution);
 router.get("/strengths-weaknesses/:studentId", strengthsWeaknesses);
+// Course search must come before /course/:courseCode to avoid route conflict
+router.get("/courses/search", courseSearch);
 router.get("/course/:courseCode", coursePerformances);
 router.get("/major", byMajor);
 router.get("/batch/:batch", byBatch);
