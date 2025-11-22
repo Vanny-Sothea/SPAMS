@@ -9,6 +9,6 @@ export const transporter = nodemailer.createTransport({
 })
 
 export const sender = {
-    name : 'BongPay',
+    name : 'KSMS',
     address : process.env.MAIL_AUTH_USER as string,
 }
